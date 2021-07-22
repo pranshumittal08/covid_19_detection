@@ -242,23 +242,3 @@ object_annotations_file=None):
   logging.info('Finished writing, skipped %d annotations.',
                total_num_annotations_skipped)
 
-# if __name__ == '__main__':
-  
-#   data_path = r'D:\Datasets\siim_covid19_detection'
-  
-#   data_path_1080px = os.path.join(data_path, '1080px')
-  
-#   main_df = pd.read_csv(os.path.join(data_path, 'main.csv'))
-
-#   for fold in range(5):
-#     image_info_file = os.path.join(data_path_1080px, 'object_detection_files', f'files_fold_{fold}', 'train', 'images_info.json')
-    
-#     image_dir = os.path.join(data_path_1080px, 'train', 'image')
-
-#     output_path =os.path.join(data_path_1080px, 'tfrecords', f'fold_{fold}', 'train')
-
-#     os.makedirs(output_path, exist_ok= True)
-#     num_shards = 32
-#     object_annotations_file= os.path.join(data_path_1080px,'object_detection_files', f'files_fold_{fold}', 'train', 'object_detection_info.json')
-    # _create_tf_record_from_covid_19_annotations(image_info_file, image_dir, output_path, num_shards,
-                                                                        # object_annotations_file)  

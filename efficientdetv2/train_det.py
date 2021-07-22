@@ -63,13 +63,18 @@ val_json_file = r'D:\Datasets\siim_covid19_detection\1080px\object_detection_fil
 hparams = ''
 model_name = 'efficientdetv2-s'
 num_epochs = 1
-batch_size = 8
-num_of_examples_per_epoch = 10000
+batch_size = 16
+num_of_examples_per_epoch = 6000
 mode = 'traineval'
 debug = False
 use_fake_data = False
 eval_samples = 2000
 steps_per_execution = 1
+lr_warmup_init = 0.0005
+weight_decay = 0.001
+num_scales = 2
+# backbone_config = {'pretrained_path': None,
+#                    'weights': 'imagenet'}
 
 def main():
     config = hparams_config.get_detection_config(model_name)
@@ -85,7 +90,11 @@ def main():
         batch_size = batch_size,
         tf_random_seed = 42,
         debug = debug,
-        val_json_file = val_json_file)
+        val_json_file = val_json_file,
+        lr_warmup_init = lr_warmup_init,
+        weigth_decay = weight_decay,
+        # backbone_config = backbone_config,
+        num_scales = num_scales)
     config.override(params, True)
 
     def get_dataset(is_training, config):

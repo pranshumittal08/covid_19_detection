@@ -62,7 +62,7 @@ def get_model(model_name, override_params=None, model_dir=None):
     builder = efficientnet_builder
   elif model_name.startswith('efficientnetv2-'):
     
-    model =  effnetv2_model.get_model(model_name, 
+    model =  effnetv2_model.get_model(model_name,
     **override_params)
     return model
 

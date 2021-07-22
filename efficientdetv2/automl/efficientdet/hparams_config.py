@@ -178,7 +178,7 @@ def default_detection_configs():
   h.act_type = 'swish'
 
   # input preprocessing parameters
-  h.image_size = 512  # An integer or a string WxH such as 640x320.
+  h.image_size = 320  # An integer or a string WxH such as 640x320.
   h.target_size = None
   h.input_rand_hflip = False
   h.jitter_min = 0.1
@@ -196,7 +196,7 @@ def default_detection_configs():
 
   h.skip_crowd_during_training = True
   h.label_map = None  # a dict or a string of 'coco', 'voc', 'waymo'.
-  h.max_instances_per_image = 20  # Default to 100 for COCO.
+  h.max_instances_per_image = 5  # Default to 100 for COCO.
   h.regenerate_source_id = False
 
   # model architecture
@@ -217,7 +217,7 @@ def default_detection_configs():
   h.first_lr_drop_epoch = 5.0
   h.second_lr_drop_epoch = 10.0
   h.poly_lr_power = 0.9
-  h.clip_gradients_norm = 10.0
+  h.clip_gradients_norm = 0.1
   h.num_epochs = 30
 
   h.data_format = 'channels_last'
@@ -264,7 +264,7 @@ def default_detection_configs():
       'sigma': None,
       'pyfunc': False,
       'max_nms_inputs': 0,
-      'max_output_size': 100,
+      'max_output_size': 50,
   }
   h.tflite_max_detections = 100
 
@@ -397,7 +397,7 @@ efficientdet_model_param_dict = {
     dict(
         name='efficientdetv2-s',
         backbone_name='efficientnetv2-s',
-        image_size=512,
+        image_size=320,
         fpn_num_filters=64,
         fpn_cell_repeats=3,
         box_class_repeats=3,

@@ -705,7 +705,7 @@ def get_model(model_name,
     if weights == 'imagenet':
       url = ('https://storage.googleapis.com/cloud-tpu-checkpoints/'
             f'efficientnet/v2/{model_name}.tgz')
-      pretrained_ckpt = tf.keras.effnetv2_utils.get_file(model_name, url, untar=True)
+      pretrained_ckpt = tf.keras.utils.get_file(model_name, url, untar=True)
       if tf.io.gfile.isdir(pretrained_ckpt):
         pretrained_ckpt = tf.train.latest_checkpoint(pretrained_ckpt)
         net.load_weights(pretrained_ckpt)

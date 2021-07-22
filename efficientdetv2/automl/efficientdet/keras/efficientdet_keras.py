@@ -178,7 +178,7 @@ class FNode(tf.keras.layers.Layer):
 
 
 class OpAfterCombine(tf.keras.layers.Layer):
-  """Operation after combining input features during feature fusiong."""
+  """Operation after combining input features during feature fusion."""
 
   def __init__(self,
                is_training_bn,
@@ -938,8 +938,8 @@ class EfficientDetModel(EfficientDetNet):
   def _preprocessing(self,
                      raw_images,
                      image_size,
-                     mean_rgb,
-                     stddev_rgb,
+                     mean_rgb = None,
+                     stddev_rgb = None,
                      mode=None):
     """Preprocess images before feeding to the network."""
     if not mode:
@@ -953,7 +953,7 @@ class EfficientDetModel(EfficientDetNet):
     def map_fn(image):
       input_processor = covid_19_dataloader.DetectionInputProcessor(
           image, image_size)
-      input_processor.normalize_image(mean_rgb, stddev_rgb)
+      input_processor.normalize_image()
       input_processor.set_scale_factors_to_output_size()
       image = input_processor.resize_and_crop_image()
       image_scale = input_processor.image_scale_to_original
@@ -1005,7 +1005,6 @@ class EfficientDetModel(EfficientDetNet):
 
     # preprocess.
     inputs, scales = self._preprocessing(inputs, config.image_size,
-                                         config.mean_rgb, config.stddev_rgb,
                                          pre_mode)
     # network.
     outputs = super().call(inputs, training)
@@ -1014,5 +1013,5 @@ class EfficientDetModel(EfficientDetNet):
       # postprocess for detection
       det_outputs = self._postprocess(outputs[0], outputs[1], scales, post_mode)
       outputs = det_outputs + outputs[2:]
-
+    
     return outputs

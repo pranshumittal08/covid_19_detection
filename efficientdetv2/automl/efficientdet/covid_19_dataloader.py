@@ -41,12 +41,15 @@ class InputProcessor:
   def image(self, image):
     self._image = image
 
-  def normalize_image(self, mean_rgb, stddev_rgb):
+  def normalize_image(self, mean_rgb = None, stddev_rgb= None):
     """Normalize the image to zero mean and unit variance."""
     # The image normalization is identical to Cloud TPU ResNet.
     self._image = tf.cast(self._image, dtype=tf.float32)
-    self._image -= tf.constant(mean_rgb, shape=(1, 1, 3), dtype=tf.float32)
-    self._image /= tf.constant(stddev_rgb, shape=(1, 1, 3), dtype=tf.float32)
+    if mean_rgb is None:
+        self._image = self._image/255.0
+    else:
+        self._image -= tf.constant(mean_rgb, shape=(1, 1, 3), dtype=tf.float32)
+        self._image /= tf.constant(stddev_rgb, shape=(1, 1, 3), dtype=tf.float32)
     return self._image
 
   def set_training_random_scale_factors(self,
@@ -303,9 +306,8 @@ class InputReader:
             image, boxes = autoaugment.distort_image_with_autoaugment(
                 image, boxes, params['autoaugment_policy'])
 
-      input_processor = DetectionInputProcessor(image, params['image_size'],
-                                                boxes, classes)
-      input_processor.normalize_image(params['mean_rgb'], params['stddev_rgb'])
+      input_processor = DetectionInputProcessor(image, params['image_size'], boxes, classes)
+      input_processor.normalize_image()
       if self._is_training:
         if params['input_rand_hflip']:
           input_processor.random_horizontal_flip()
@@ -424,24 +426,6 @@ class InputReader:
 
     # Parse the fetched records to input tensors for model function.
     # pylint: disable=g-long-lambda
- 
-    # map_fn = lambda value: self.dataset_parser(value, example_decoder, anchor_labeler, params)
-    # pylint: enable=g-long-lambda
-    # mapped_values = Parallel(10, 'threading')(delayed(map_fn)(value) for value in dataset.as_numpy_iterator())
-    # mapped_values = []
-    # for value in dataset.as_numpy_iterator():
-    #   mapped_values.append(map_fn(value))
-    # dataset = tf.data.Dataset.from_tensor_slices(mapped_values)
-    print(self.dataset_parser)
-    def map_fn(value):
-      return self.dataset_parser(value, example_decoder, anchor_labeler, params)
-    # image, cls_targets, box_targets, num_positives, source_id, 
-    #           image_scale, boxes, areas, classes
-    # dataset = dataset.map(lambda value: tf.py_function(map_fn, inp = [value], Tout = [tf.float32, tf.int32, tf.float32, tf.float32, tf.string, tf.float32, tf.float32, tf.float32, tf.float32]), num_parallel_calls=tf.data.AUTOTUNE)
-    # sample_value = next(dataset.as_numpy_iterator())
-    # return map_fn(sample_value)
-  
-    # dataset = dataset.map(lambda value: tf.py_function(func = map_fn, inp = [value], Tout = [tf.float32, tf.int32, tf.float32,  tf.float32, tf.string, tf.float32, tf.float32, tf.float32, tf.float32]), tf.data.AUTOTUNE)
 
     dataset = dataset.map(lambda value: self.dataset_parser(value, example_decoder, anchor_labeler, params), num_parallel_calls = tf.data.AUTOTUNE)
     dataset = dataset.prefetch(batch_size)
