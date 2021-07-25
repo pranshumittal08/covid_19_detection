@@ -19,10 +19,17 @@ from keras import util_keras
 
 def setup_model(model, config):
     """Build and compile model."""
+            # CosineDecayRestarts
+    learning_rate_scheduler = tf.keras.optimizers.schedules.CosineDecayRestarts(initial_learning_rate=config.learning_rate, 
+                                                      first_decay_steps=100,
+                                                      alpha = 0.05,
+                                                      m_mul=0.9, 
+                                                      t_mul = 2  
+                                                     )
     model.build((None, *config.image_size, 3))
     model.compile(
           steps_per_execution=config.steps_per_execution,
-          optimizer=train_lib.get_optimizer(config.as_dict()),
+        optimizer=tf.keras.optimizers.Adam(learning_rate_scheduler),
           loss={
               train_lib.BoxLoss.__name__:
                   train_lib.BoxLoss(
@@ -43,8 +50,8 @@ def setup_model(model, config):
                       config.gamma,
                       label_smoothing=config.label_smoothing,
                       reduction=tf.keras.losses.Reduction.NONE),
-              tf.keras.losses.SparseCategoricalCrossentropy.__name__:
-                  tf.keras.losses.SparseCategoricalCrossentropy(
+              tf.keras.losses.CategoricalCrossentropy.__name__:
+                  tf.keras.losses.CategoricalCrossentropy(
                       from_logits=True, reduction=tf.keras.losses.Reduction.NONE)
           })
     return model
@@ -63,18 +70,16 @@ val_json_file = r'D:\Datasets\siim_covid19_detection\1080px\object_detection_fil
 hparams = ''
 model_name = 'efficientdetv2-s'
 num_epochs = 1
-batch_size = 8
+batch_size = 4
 num_of_examples_per_epoch = 5000
 mode = 'traineval'
-debug = False
+debug = True
 use_fake_data = False
 eval_samples = 1200
 steps_per_execution = 1
-lr_warmup_init = 0.00001
-weight_decay = 0.001
-num_scales = 2
-# backbone_config = {'pretrained_path': None,
-#                    'weights': 'imagenet'}
+lr_warmup_init = 0.0001
+num_scales = 3
+backbone_config = {'pretrained': True}
 
 def main():
     config = hparams_config.get_detection_config(model_name)
@@ -92,8 +97,7 @@ def main():
         debug = debug,
         val_json_file = val_json_file,
         lr_warmup_init = lr_warmup_init,
-        weigth_decay = weight_decay,
-        # backbone_config = backbone_config,
+        backbone_config = backbone_config,
         num_scales = num_scales)
     config.override(params, True)
 

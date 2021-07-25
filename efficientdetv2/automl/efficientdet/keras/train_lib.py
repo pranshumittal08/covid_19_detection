@@ -29,7 +29,7 @@ import inference
 import iou_utils
 import utils
 from keras import anchors
-from keras import efficientdet_keras_gn
+from keras import efficientdet_keras
 from keras import label_util
 from keras import postprocess
 from keras import util_keras
@@ -523,8 +523,8 @@ class FocalLoss(tf.keras.losses.Loss):
 
     # apply label smoothing for cross_entropy for each entry.
     y_true = y_true * (1.0 - self.label_smoothing) + 0.5 * self.label_smoothing
-    ce = tf.nn.sigmoid_cross_entropy_with_logits(labels=y_true, logits=y_pred)
-
+    ce = tf.keras.losses.BinaryCrossentropy(from_logits = True)(y_true,y_pred)
+    # assert not np.any(np.isnan(ce.numpy()))
     # compute the final loss and return
     return alpha_factor * modulating_factor * ce / (normalizer + 1e-8)
 
@@ -556,7 +556,8 @@ class BoxLoss(tf.keras.losses.Loss):
     # TODO(fsx950223): remove cast when huber loss dtype is fixed.
     box_loss = tf.cast(self.huber(box_targets, box_outputs),
                        box_outputs.dtype) * mask
-    box_loss = tf.reduce_sum(box_loss) / (normalizer +1e-8)
+    box_loss = tf.reduce_sum(box_loss) / (normalizer + 1e-6)
+    # assert not np.any(np.isnan(box_loss.numpy()))
     return box_loss
 
 
@@ -584,10 +585,11 @@ class BoxIouLoss(tf.keras.losses.Loss):
     box_iou_loss = iou_utils.iou_loss(box_outputs, box_targets,
                                       self.iou_loss_type)
     box_iou_loss = tf.reduce_sum(box_iou_loss) / (normalizer + 1e-8)
+    # assert not np.any(np.isnan(box_iou_loss.numpy()))
     return box_iou_loss
 
 
-class EfficientDetNetTrain(efficientdet_keras_gn.EfficientDetNet):
+class EfficientDetNetTrain(efficientdet_keras.EfficientDetNet):
   """A customized trainer for EfficientDet.
 
   see https://www.tensorflow.org/guide/keras/customizing_what_happens_in_fit
@@ -609,9 +611,11 @@ class EfficientDetNetTrain(efficientdet_keras_gn.EfficientDetNet):
   def _reg_l2_loss(self, weight_decay, regex=r'.*(kernel|weight):0$'):
     """Return regularization l2 loss loss."""
     var_match = re.compile(regex)
-    return weight_decay * tf.add_n([
+    reg_l2_loss =  weight_decay * tf.add_n([
         tf.nn.l2_loss(v) for v in self._freeze_vars() if var_match.match(v.name)
     ])
+    # assert np.any(np.isnan(reg_l2_loss.numpy()))
+    return reg_l2_loss
 
   def _detection_loss(self, cls_outputs, box_outputs, labels, loss_vals):
     """Computes total detection loss.
@@ -678,6 +682,7 @@ class EfficientDetNetTrain(efficientdet_keras_gn.EfficientDetNet):
       if class_loss_layer:
         cls_loss = class_loss_layer([num_positives_sum, cls_targets_at_level],
                                     cls_outputs[level])
+        # assert not np.any(np.isnan(cls_loss.numpy()))
         if self.config.data_format == 'channels_first':
           cls_loss = tf.reshape(
               cls_loss, [bs, -1, width, height, self.config.num_classes])
@@ -689,6 +694,7 @@ class EfficientDetNetTrain(efficientdet_keras_gn.EfficientDetNet):
                 tf.not_equal(
                     labels['cls_targets_%d' % (level + self.config.min_level)],
                     -2), -1), dtype)
+        # assert not np.any(np.isnan(cls_loss.numpy()))
         cls_loss_sum = tf.reduce_sum(cls_loss)
         cls_losses.append(tf.cast(cls_loss_sum, dtype))
 
@@ -696,9 +702,10 @@ class EfficientDetNetTrain(efficientdet_keras_gn.EfficientDetNet):
         box_targets_at_level = (
             labels['box_targets_%d' % (level + self.config.min_level)])
         box_loss_layer = self.loss[BoxLoss.__name__]
-        box_losses.append(
-            box_loss_layer([num_positives_sum, box_targets_at_level],
-                           box_outputs[level]))
+        box_loss = box_loss_layer([num_positives_sum, box_targets_at_level],
+                           box_outputs[level])
+        # assert not np.any(np.isnan(box_loss.numpy()))
+        box_losses.append(box_loss)
 
     if self.config.iou_loss_type:
       box_outputs = tf.concat([tf.reshape(v, [-1, 4]) for v in box_outputs],
@@ -712,6 +719,7 @@ class EfficientDetNetTrain(efficientdet_keras_gn.EfficientDetNet):
       box_iou_loss_layer = self.loss[BoxIouLoss.__name__]
       box_iou_loss = box_iou_loss_layer([num_positives_sum, box_targets],
                                         box_outputs)
+    #   assert not np.any(np.isnan(box_iou_loss.numpy()))
       loss_vals['box_iou_loss'] = box_iou_loss
     else:
       box_iou_loss = 0
@@ -774,9 +782,9 @@ class EfficientDetNetTrain(efficientdet_keras_gn.EfficientDetNet):
         total_loss += seg_loss
         loss_vals['seg_loss'] = seg_loss
 
-      reg_l2_loss = self._reg_l2_loss(self.config.weight_decay)
-      loss_vals['reg_l2_loss'] = reg_l2_loss
-      total_loss += tf.cast(reg_l2_loss, loss_dtype)
+    #   reg_l2_loss = self._reg_l2_loss(self.config.weight_decay)
+    #   loss_vals['reg_l2_loss'] = reg_l2_loss
+    #   total_loss += tf.cast(reg_l2_loss, loss_dtype)
       if isinstance(self.optimizer,
                     tf.keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = self.optimizer.get_scaled_loss(total_loss)
@@ -793,6 +801,7 @@ class EfficientDetNetTrain(efficientdet_keras_gn.EfficientDetNet):
       gradients = self.optimizer.get_unscaled_gradients(scaled_gradients)
     else:
       gradients = scaled_gradients
+    # assert not np.any(np.isnan(gradients[-1].numpy()))
     if self.config.clip_gradients_norm > 0:
       clip_norm = abs(self.config.clip_gradients_norm)
       gradients = [
@@ -801,7 +810,7 @@ class EfficientDetNetTrain(efficientdet_keras_gn.EfficientDetNet):
       ]
       gradients, _ = tf.clip_by_global_norm(gradients, clip_norm)
       loss_vals['gradient_norm'] = tf.linalg.global_norm(gradients)
-    print(loss_vals)
+    #   assert not np.any(np.isnan(loss_vals['gradient_norm'].numpy()))
     self.optimizer.apply_gradients(zip(gradients, trainable_vars))
     return loss_vals
 

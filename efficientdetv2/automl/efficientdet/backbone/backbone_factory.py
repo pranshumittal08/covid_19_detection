@@ -61,9 +61,11 @@ def get_model(model_name, override_params=None, model_dir=None):
   elif model_name.startswith('efficientnet-'):
     builder = efficientnet_builder
   elif model_name.startswith('efficientnetv2-'):
-    
-    model =  effnetv2_model.get_model(model_name,training = False,
-    **override_params)
+    if override_params['pretrained'] == False:
+        model = effnetv2_model.EffNetV2Model(model_name,  include_top = False)
+    else:
+        model =  effnetv2_model.get_model(model_name,training = True,
+        **override_params)
     return model
 
   else:

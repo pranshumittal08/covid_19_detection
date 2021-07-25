@@ -46,7 +46,7 @@ class InputProcessor:
     # The image normalization is identical to Cloud TPU ResNet.
     self._image = tf.cast(self._image, dtype=tf.float32)
     if mean_rgb is None:
-        self._image = self._image/255.0
+        self._image = self._image/125.0 - 1
     else:
         self._image -= tf.constant(mean_rgb, shape=(1, 1, 3), dtype=tf.float32)
         self._image /= tf.constant(stddev_rgb, shape=(1, 1, 3), dtype=tf.float32)
