@@ -181,8 +181,8 @@ def default_detection_configs():
   h.image_size = 320  # An integer or a string WxH such as 640x320.
   h.target_size = None
   h.input_rand_hflip = False
-  h.jitter_min = 0.1
-  h.jitter_max = 0.1
+  h.jitter_min = 0.8
+  h.jitter_max = 1.0
   h.autoaugment_policy = None
   h.grid_mask = False
   h.sample_image = None
@@ -196,7 +196,7 @@ def default_detection_configs():
 
   h.skip_crowd_during_training = True
   h.label_map = None  # a dict or a string of 'coco', 'voc', 'waymo'.
-  h.max_instances_per_image = 5  # Default to 100 for COCO.
+  h.max_instances_per_image = 15  # Default to 100 for COCO.
   h.regenerate_source_id = False
 
   # model architecture
@@ -217,7 +217,7 @@ def default_detection_configs():
   h.first_lr_drop_epoch = 5.0
   h.second_lr_drop_epoch = 10.0
   h.poly_lr_power = 0.9
-  h.clip_gradients_norm = 0.1
+  h.clip_gradients_norm = 5
   h.num_epochs = 30
 
   h.data_format = 'channels_last'
@@ -245,6 +245,12 @@ def default_detection_configs():
   h.mixed_precision = False  # If False, use float32.
   h.loss_scale = None  # set to 2**16 enables dynamic loss scale
   h.model_optimizations = {}  # 'prune':{}
+
+  # Group Normalization
+  h.is_training_gn = True
+  h.apply_gn_for_resampling = True
+  h.conv_gn_act_pattern = False
+
 
   # For detection.
   h.box_class_repeats = 3

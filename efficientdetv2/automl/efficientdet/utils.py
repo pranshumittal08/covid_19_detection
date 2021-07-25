@@ -20,6 +20,7 @@ from absl import logging
 import numpy as np
 import tensorflow.compat.v1 as tf
 import tensorflow.compat.v2 as tf2
+import tensorflow_addons as tda
 from tensorflow.python.eager import tape as tape_lib  # pylint:disable=g-direct-tensorflow-import
 from tensorflow.python.tpu import tpu_function  # pylint:disable=g-direct-tensorflow-import
 # pylint: disable=logging-format-interpolation
@@ -256,6 +257,7 @@ class BatchNormalization(tf.keras.layers.BatchNormalization):
     for u in self.updates:
       tf.add_to_collection(tf.GraphKeys.UPDATE_OPS, u)
     return outputs
+
 
 
 def batch_norm_class(is_training, strategy=None):

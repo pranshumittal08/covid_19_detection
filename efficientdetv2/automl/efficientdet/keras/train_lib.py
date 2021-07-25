@@ -29,7 +29,7 @@ import inference
 import iou_utils
 import utils
 from keras import anchors
-from keras import efficientdet_keras
+from keras import efficientdet_keras_gn
 from keras import label_util
 from keras import postprocess
 from keras import util_keras
@@ -388,7 +388,7 @@ class DisplayCallback(tf.keras.callbacks.Callback):
       self._draw_inference(batch)
 
   def _draw_inference(self, step):
-    self.model.__class__ = efficientdet_keras.EfficientDetModel
+    self.model.__class__ = efficientdet_keras_gn.EfficientDetModel
     results = self.model(self.sample_image, training=False)
     boxes, scores, classes, valid_len = tf.nest.map_structure(np.array, results)
     length = valid_len[0]
@@ -526,7 +526,7 @@ class FocalLoss(tf.keras.losses.Loss):
     ce = tf.nn.sigmoid_cross_entropy_with_logits(labels=y_true, logits=y_pred)
 
     # compute the final loss and return
-    return alpha_factor * modulating_factor * ce / normalizer
+    return alpha_factor * modulating_factor * ce / (normalizer + 1e-8)
 
 
 class BoxLoss(tf.keras.losses.Loss):
@@ -556,7 +556,7 @@ class BoxLoss(tf.keras.losses.Loss):
     # TODO(fsx950223): remove cast when huber loss dtype is fixed.
     box_loss = tf.cast(self.huber(box_targets, box_outputs),
                        box_outputs.dtype) * mask
-    box_loss = tf.reduce_sum(box_loss) / normalizer
+    box_loss = tf.reduce_sum(box_loss) / (normalizer +1e-8)
     return box_loss
 
 
@@ -583,11 +583,11 @@ class BoxIouLoss(tf.keras.losses.Loss):
     box_targets = anchors.decode_box_outputs(box_targets, anchor_boxes) * mask
     box_iou_loss = iou_utils.iou_loss(box_outputs, box_targets,
                                       self.iou_loss_type)
-    box_iou_loss = tf.reduce_sum(box_iou_loss) / normalizer
+    box_iou_loss = tf.reduce_sum(box_iou_loss) / (normalizer + 1e-8)
     return box_iou_loss
 
 
-class EfficientDetNetTrain(efficientdet_keras.EfficientDetNet):
+class EfficientDetNetTrain(efficientdet_keras_gn.EfficientDetNet):
   """A customized trainer for EfficientDet.
 
   see https://www.tensorflow.org/guide/keras/customizing_what_happens_in_fit
@@ -718,6 +718,7 @@ class EfficientDetNetTrain(efficientdet_keras.EfficientDetNet):
 
     cls_loss = tf.add_n(cls_losses) if cls_losses else 0
     box_loss = tf.add_n(box_losses) if box_losses else 0
+    
     total_loss = (
         cls_loss + self.config.box_loss_weight * box_loss +
         self.config.iou_loss_weight * box_iou_loss)
@@ -800,6 +801,7 @@ class EfficientDetNetTrain(efficientdet_keras.EfficientDetNet):
       ]
       gradients, _ = tf.clip_by_global_norm(gradients, clip_norm)
       loss_vals['gradient_norm'] = tf.linalg.global_norm(gradients)
+    print(loss_vals)
     self.optimizer.apply_gradients(zip(gradients, trainable_vars))
     return loss_vals
 
@@ -856,7 +858,7 @@ class EfficientDetNetTrainHub(EfficientDetNetTrain):
   """EfficientDetNetTrain for Hub module."""
 
   def __init__(self, config, hub_module_url, name=''):
-    super(efficientdet_keras.EfficientDetNet, self).__init__(name=name)
+    super(efficientdet_keras_gn.EfficientDetNet, self).__init__(name=name)
     self.config = config
     self.hub_module_url = hub_module_url
     self.base_model = hub.KerasLayer(hub_module_url, trainable=True)
@@ -864,15 +866,15 @@ class EfficientDetNetTrainHub(EfficientDetNetTrain):
     # class/box output prediction network.
     num_anchors = len(config.aspect_ratios) * config.num_scales
 
-    conv2d_layer = efficientdet_keras.ClassNet.conv2d_layer(
+    conv2d_layer = efficientdet_keras_gn.ClassNet.conv2d_layer(
         config.separable_conv, config.data_format)
-    self.classes = efficientdet_keras.ClassNet.classes_layer(
+    self.classes = efficientdet_keras_gn.ClassNet.classes_layer(
         conv2d_layer,
         config.num_classes,
         num_anchors,
         name='class_net/class-predict')
 
-    self.boxes = efficientdet_keras.BoxNet.boxes_layer(
+    self.boxes = efficientdet_keras_gn.BoxNet.boxes_layer(
         config.separable_conv,
         num_anchors,
         config.data_format,

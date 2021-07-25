@@ -19,7 +19,7 @@ from typing import Optional, Text
 from absl import logging
 import tensorflow as tf
 import utils
-
+import tensorflow_addons as tfa
 # Prefix variable name mapping from keras model to the hub module checkpoint.
 HUB_CPT_NAME = collections.OrderedDict([('class_net/class-predict/', 'classes'),
                                         ('box_net/box-predict/', 'boxes'),
@@ -65,6 +65,18 @@ def build_batch_norm(is_training_bn: bool,
 
   return bn_layer
 
+def build_group_norm(groups = 8, axis = -1, epsilon = 0.001,
+                    beta_initializer = 'zeros', gamma_initializer = 'one', name = 'gn',**kwargs):
+    return tfa.layers.GroupNormalization(
+        name = name,
+    groups = groups,
+    axis = axis,
+    epsilon=epsilon,
+    center = True,
+    scale = True,
+    beta_initializer=beta_initializer,
+    gamma_initializer = gamma_initializer,
+    **kwargs)
 
 def get_ema_vars(model):
   """Get all exponential moving average (ema) variables."""

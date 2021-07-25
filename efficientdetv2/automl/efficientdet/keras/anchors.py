@@ -146,8 +146,8 @@ class Anchors():
         anchor_size_x_2 = base_anchor_size_x * aspect_x / 2.0
         anchor_size_y_2 = base_anchor_size_y * aspect_y / 2.0
 
-        x = np.arange(stride[1] / 2, self.image_size[1], stride[1])
         y = np.arange(stride[0] / 2, self.image_size[0], stride[0])
+        x = np.arange(stride[1] / 2, self.image_size[1], stride[1])
         xv, yv = np.meshgrid(x, y)
         xv = xv.reshape(-1)
         yv = yv.reshape(-1)
@@ -232,14 +232,13 @@ class AnchorLabeler(object):
     """
     gt_box_list = box_list.BoxList(gt_boxes)
     anchor_box_list = box_list.BoxList(self._anchors.boxes)
-
     # cls_weights, box_weights are not used
     cls_targets,  box_targets, matches = self._target_assigner.assign(
         anchor_box_list, gt_box_list, gt_labels)
     # class labels start from 1 and the background class = -1
     cls_targets -= 1
     cls_targets = tf.cast(cls_targets, tf.int32)
-
+    
     # Unpack labels.
     cls_targets_dict = self._unpack_labels(cls_targets)
     box_targets_dict = self._unpack_labels(box_targets)
