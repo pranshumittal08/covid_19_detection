@@ -223,8 +223,7 @@ class EvaluationMetric():
               'image_id': int(image_id),
               'category_id': int(category_id),
               'bbox': [box[1], box[0], box[3] - box[1], box[2] - box[0]],
-              'area': area,
-              'iscrowd': int(is_crowd)
+              'area': area
           })
           self.annotation_id += 1
           self.category_ids.append(category_id)

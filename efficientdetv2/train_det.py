@@ -53,7 +53,8 @@ def setup_model(model, config):
               tf.keras.losses.CategoricalCrossentropy.__name__:
                   tf.keras.losses.CategoricalCrossentropy(
                       from_logits=True, reduction=tf.keras.losses.Reduction.NONE)
-          })
+          }, 
+        metrics = [tf.keras.metrics.Precision()])
     return model
 
 def init_experimental(config):

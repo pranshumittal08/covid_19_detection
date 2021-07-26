@@ -47,9 +47,9 @@ def main(_):
   # Create model config.
   config = hparams_config.get_efficientdet_config(FLAGS.model_name)
   config.is_training_bn = False
-  config.image_size = '1920x1280'
+  config.image_size = '512x512'
   config.nms_configs.score_thresh = 0.4
-  config.nms_configs.max_output_size = 100
+  config.nms_configs.max_output_size = 20
   config.override(FLAGS.hparams)
 
   # Use 'mixed_float16' if running on GPUs.

@@ -236,7 +236,7 @@ def default_detection_configs():
   h.delta = 0.1  # regularization parameter of huber loss.
   # total loss = box_loss * box_loss_weight + iou_loss * iou_loss_weight
   h.box_loss_weight = 50.0
-  h.iou_loss_type = None
+  h.iou_loss_type = 'iou'
   h.iou_loss_weight = 1.0
 
   # regularization l2 loss.

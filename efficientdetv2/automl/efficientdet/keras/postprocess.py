@@ -531,7 +531,7 @@ def generate_detections(params,
                         image_scales,
                         image_ids,
                         flip=False,
-                        pre_class_nms=True):
+                        pre_class_nms=False):
   """A legacy interface for generating [id, x, y, w, h, score, class]."""
   _, width = utils.parse_image_size(params['image_size'])
 

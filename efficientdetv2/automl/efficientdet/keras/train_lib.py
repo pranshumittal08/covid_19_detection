@@ -314,14 +314,32 @@ def get_optimizer(params):
         initial_scale=params['loss_scale'])
   return optimizer
 
+class PascalVOCCallback(tf.keras.callbacks.Callback):
+    '''Callback to evaluate the Average Precision using the Pascal VOC AP metric'''
+    def __init__(self, test_dataset, update_freq = 1):
+        super(PascalVOCCallback, self).__init__()
+        self.update_freq = update_freq
+        self.test_dataset = test_dataset
+    
+    def set_model(self, model):
+        self.model = model
+        config = model.config 
+        self.config = config
+        label_map = label_util.get_label_map(config.label_map)
+        log_dir = os.path.join(config.model_dir, 'pascalvoc')
+        self.file_writer = tf.summary.create_file_writer(log_dir)
+        
+
+
 
 class COCOCallback(tf.keras.callbacks.Callback):
   """A utility for COCO eval callback."""
 
-  def __init__(self, test_dataset, update_freq=None):
+  def __init__(self, test_dataset, update_freq=None, metrics = None):
     super().__init__()
     self.test_dataset = test_dataset
     self.update_freq = update_freq
+    self.metrics = metrics
 
   def set_model(self, model: tf.keras.Model):
     self.model = model
@@ -358,9 +376,13 @@ class COCOCallback(tf.keras.callbacks.Callback):
       metrics = self.evaluator.result()
       eval_results = {}
       with self.file_writer.as_default(), tf.summary.record_if(True):
-        for i, name in enumerate(self.evaluator.metric_names):
-          tf.summary.scalar(name, metrics[i], step=epoch)
-          eval_results[name] = metrics[i]
+        if len(self.metrics) > 0:
+            eval_metrics = self.metrics
+        else:
+            eval_metrics = self.evaluator.metric_names
+        for i, name in enumerate(eval_metrics):
+            tf.summary.scalar(name, eval_metrics[i], step = epoch)
+            eval_results[name] = eval_metrics[i]
       return eval_results
 
 
@@ -388,7 +410,7 @@ class DisplayCallback(tf.keras.callbacks.Callback):
       self._draw_inference(batch)
 
   def _draw_inference(self, step):
-    self.model.__class__ = efficientdet_keras_gn.EfficientDetModel
+    self.model.__class__ = efficientdet_keras.EfficientDetModel
     results = self.model(self.sample_image, training=False)
     boxes, scores, classes, valid_len = tf.nest.map_structure(np.array, results)
     length = valid_len[0]
@@ -556,7 +578,7 @@ class BoxLoss(tf.keras.losses.Loss):
     # TODO(fsx950223): remove cast when huber loss dtype is fixed.
     box_loss = tf.cast(self.huber(box_targets, box_outputs),
                        box_outputs.dtype) * mask
-    box_loss = tf.reduce_sum(box_loss) / (normalizer + 1e-6)
+    box_loss = tf.reduce_sum(box_loss) / (normalizer)
     # assert not np.any(np.isnan(box_loss.numpy()))
     return box_loss
 
@@ -584,7 +606,7 @@ class BoxIouLoss(tf.keras.losses.Loss):
     box_targets = anchors.decode_box_outputs(box_targets, anchor_boxes) * mask
     box_iou_loss = iou_utils.iou_loss(box_outputs, box_targets,
                                       self.iou_loss_type)
-    box_iou_loss = tf.reduce_sum(box_iou_loss) / (normalizer + 1e-8)
+    box_iou_loss = tf.reduce_sum(box_iou_loss) / (normalizer)
     # assert not np.any(np.isnan(box_iou_loss.numpy()))
     return box_iou_loss
 
@@ -782,9 +804,9 @@ class EfficientDetNetTrain(efficientdet_keras.EfficientDetNet):
         total_loss += seg_loss
         loss_vals['seg_loss'] = seg_loss
 
-    #   reg_l2_loss = self._reg_l2_loss(self.config.weight_decay)
-    #   loss_vals['reg_l2_loss'] = reg_l2_loss
-    #   total_loss += tf.cast(reg_l2_loss, loss_dtype)
+      reg_l2_loss = self._reg_l2_loss(self.config.weight_decay)
+      loss_vals['reg_l2_loss'] = reg_l2_loss
+      total_loss += tf.cast(reg_l2_loss, loss_dtype)
       if isinstance(self.optimizer,
                     tf.keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = self.optimizer.get_scaled_loss(total_loss)
@@ -867,7 +889,7 @@ class EfficientDetNetTrainHub(EfficientDetNetTrain):
   """EfficientDetNetTrain for Hub module."""
 
   def __init__(self, config, hub_module_url, name=''):
-    super(efficientdet_keras_gn.EfficientDetNet, self).__init__(name=name)
+    super(efficientdet_keras.EfficientDetNet, self).__init__(name=name)
     self.config = config
     self.hub_module_url = hub_module_url
     self.base_model = hub.KerasLayer(hub_module_url, trainable=True)
@@ -875,15 +897,15 @@ class EfficientDetNetTrainHub(EfficientDetNetTrain):
     # class/box output prediction network.
     num_anchors = len(config.aspect_ratios) * config.num_scales
 
-    conv2d_layer = efficientdet_keras_gn.ClassNet.conv2d_layer(
+    conv2d_layer = efficientdet_keras.ClassNet.conv2d_layer(
         config.separable_conv, config.data_format)
-    self.classes = efficientdet_keras_gn.ClassNet.classes_layer(
+    self.classes = efficientdet_keras.ClassNet.classes_layer(
         conv2d_layer,
         config.num_classes,
         num_anchors,
         name='class_net/class-predict')
 
-    self.boxes = efficientdet_keras_gn.BoxNet.boxes_layer(
+    self.boxes = efficientdet_keras.BoxNet.boxes_layer(
         config.separable_conv,
         num_anchors,
         config.data_format,
