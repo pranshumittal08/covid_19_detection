@@ -852,7 +852,7 @@ class EfficientDetNetTrain(efficientdet_keras.EfficientDetNet):
     images, labels = data
     if len(self.config.heads) == 2:
       cls_outputs, box_outputs, seg_outputs = util_keras.fp16_to_fp32_nested(
-          self(images, training=False, pre_mode = None))
+          self(images, training=False))
       loss_dtype = cls_outputs[0].dtype
     elif 'object_detection' in self.config.heads:
       cls_outputs, box_outputs = util_keras.fp16_to_fp32_nested(
